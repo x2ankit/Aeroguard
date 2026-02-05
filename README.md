@@ -67,6 +67,9 @@ The interactive Streamlit dashboard provides comprehensive visualization and ana
 ![Results Summary](ASSETS/ui5.png)
 *Comprehensive results summary with actionable insights*
 
+![Advanced Analytics](ASSETS/ui7.jpeg)
+*Advanced analytics interface with detailed flight performance metrics*
+
 ## 🛠️ Tech Stack
 
 | Component | Technology | Purpose |
