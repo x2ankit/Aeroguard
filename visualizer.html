@@ -1,0 +1,2360 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Aircraft Landing Simulation - Aviation Anomaly Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* =========================== */
+        /* HUD CONTAINER */
+        /* =========================== */
+        #hud {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #hud>* {
+            pointer-events: auto;
+        }
+
+        /* =========================== */
+        /* FLIGHT DATA PANEL - TOP LEFT */
+        /* =========================== */
+        #data-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 280px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            padding: 20px;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+            transition: border-color 0.3s;
+            z-index: 20;
+        }
+
+        #data-panel.anomaly {
+            border-color: #ff0000;
+            color: #ff0000;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+
+        /* =========================== */
+        /* ANOMALY WARNING PANEL - TOP RIGHT */
+        /* =========================== */
+        #anomaly-warning {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 260px;
+            background: rgba(255, 0, 0, 0.9);
+            border: 3px solid #ff0000;
+            border-radius: 8px;
+            padding: 20px 30px;
+            color: #fff;
+            font-weight: bold;
+            font-size: 16px;
+            display: none;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+            animation: blink 0.5s infinite;
+            z-index: 25;
+            text-align: center;
+        }
+
+        /* =========================== */
+        /* FLIGHT CONTROL PANEL - MID RIGHT */
+        /* =========================== */
+        #control-panel {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            width: 300px;
+            max-height: 400px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #0088ff;
+            border-radius: 8px;
+            padding: 15px;
+            color: #fff;
+            overflow-y: auto;
+            box-shadow: 0 0 20px rgba(0, 136, 255, 0.3);
+            z-index: 15;
+        }
+
+        /* =========================== */
+        /* TELEMETRY PANEL - BOTTOM RIGHT */
+        /* =========================== */
+        #telemetry-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 260px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #ffaa00;
+            border-radius: 8px;
+            padding: 20px;
+            color: #ffaa00;
+            box-shadow: 0 0 20px rgba(255, 170, 0, 0.3);
+            font-family: 'Courier New', monospace;
+            z-index: 15;
+        }
+
+        /* =========================== */
+        /* SENSOR FAILURE PANEL - BOTTOM LEFT */
+        /* =========================== */
+        #sensor-failure-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 280px;
+            background: rgba(255, 0, 0, 0.9);
+            border: 3px solid #ff0000;
+            border-radius: 8px;
+            padding: 15px 20px;
+            color: #fff;
+            display: none;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+            font-family: 'Courier New', monospace;
+            z-index: 20;
+        }
+
+        /* =========================== */
+        /* SHARED PANEL STYLES */
+        /* =========================== */
+        .panel-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px currentColor;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .data-label {
+            font-weight: bold;
+            opacity: 0.8;
+        }
+
+        .data-value {
+            font-weight: normal;
+            text-shadow: 0 0 5px currentColor;
+        }
+
+        .sensor-list {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid currentColor;
+        }
+
+        .sensor-item {
+            margin: 5px 0;
+            font-size: 12px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .status-normal {
+            background: #00ff00;
+            color: #000;
+        }
+
+        .status-anomaly {
+            background: #ff0000;
+            color: #fff;
+            animation: pulse 1s infinite;
+        }
+
+        .status-crashed {
+            background: #800000;
+            border: 2px solid #ff0000;
+            color: #fff;
+            animation: blink 0.8s infinite;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .sensor-failure-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .failed-sensor {
+            font-size: 12px;
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .telemetry-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        /* =========================== */
+        /* CONTROL PANEL ELEMENTS */
+        /* =========================== */
+        .control-group {
+            margin: 12px 0;
+        }
+
+        .control-label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 6px;
+            color: #0088ff;
+            font-weight: bold;
+        }
+
+        select,
+        button,
+        input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            margin: 4px 0;
+            border-radius: 4px;
+            border: 1px solid #0088ff;
+            background: rgba(0, 136, 255, 0.1);
+            color: #fff;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        button {
+            background: rgba(0, 136, 255, 0.3);
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: rgba(0, 136, 255, 0.6);
+            transform: translateY(-2px);
+        }
+
+        button.danger {
+            background: rgba(255, 0, 0, 0.3);
+            border-color: #ff0000;
+        }
+
+        button.danger:hover {
+            background: rgba(255, 0, 0, 0.6);
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider-value {
+            min-width: 40px;
+            text-align: right;
+            color: #0088ff;
+            font-weight: bold;
+        }
+
+        /* =========================== */
+        /* ANIMATION KEYFRAMES */
+        /* =========================== */
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        @keyframes blink {
+
+            0%,
+            50%,
+            100% {
+                opacity: 1;
+            }
+
+            25%,
+            75% {
+                opacity: 0.4;
+            }
+        }
+
+        /* =========================== */
+        /* CENTER WARNING & CAMERA INSTRUCTIONS */
+        /* =========================== */
+        #center-warning {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #ff0000;
+            text-shadow: 0 0 20px #ff0000;
+            display: none;
+            animation: blink 0.5s infinite;
+            pointer-events: none;
+            z-index: 30;
+        }
+
+        #camera-instructions {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: none;
+            font-size: 12px;
+            text-align: center;
+            z-index: 20;
+        }
+
+        /* =========================== */
+        /* RESPONSIVE BEHAVIOR */
+        /* =========================== */
+        @media (max-width: 1200px) {
+            #data-panel {
+                width: 250px;
+            }
+
+            #control-panel {
+                width: 270px;
+            }
+
+            #telemetry-panel {
+                width: 230px;
+            }
+
+            #anomaly-warning {
+                width: 230px;
+            }
+
+            #sensor-failure-panel {
+                bottom: 15px;
+                left: 15px;
+                width: 250px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            #data-panel {
+                width: 220px;
+                padding: 15px;
+            }
+
+            #control-panel {
+                width: 240px;
+                padding: 12px;
+            }
+
+            #telemetry-panel {
+                width: 200px;
+                padding: 15px;
+            }
+
+            #anomaly-warning {
+                width: 200px;
+                padding: 15px 20px;
+                font-size: 14px;
+            }
+
+            #sensor-failure-panel {
+                bottom: 12px;
+                left: 12px;
+                width: 220px;
+                padding: 12px 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="canvas-container"></div>
+
+    <!-- =========================== -->
+    <!-- PROFESSIONAL HUD LAYOUT -->
+    <!-- =========================== -->
+    <div id="hud">
+        <!-- Flight Data Panel - TOP LEFT -->
+        <div id="data-panel">
+            <div class="panel-title">Flight Data</div>
+            <div class="data-row">
+                <span class="data-label">Flight ID:</span>
+                <span class="data-value" id="flight-id">AA-1842</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Altitude:</span>
+                <span class="data-value" id="altitude">10000 ft</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Speed:</span>
+                <span class="data-value" id="speed">250 knots</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Distance:</span>
+                <span class="data-value" id="distance">15.2 nm</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">AI Confidence:</span>
+                <span class="data-value" id="confidence">98.5%</span>
+            </div>
+            <div class="sensor-list">
+                <div class="data-label" style="margin-bottom: 8px;">Top Sensors:</div>
+                <div class="sensor-item">▪ RALT: Radio Altimeter</div>
+                <div class="sensor-item">▪ CAS: Calibrated Airspeed</div>
+                <div class="sensor-item">▪ ALT: Barometric Altitude</div>
+            </div>
+            <div class="status-badge status-normal" id="status-badge">NORMAL</div>
+        </div>
+
+        <!-- Anomaly Warning Panel - TOP RIGHT -->
+        <div id="anomaly-warning">
+            ⚠ ANOMALY DETECTED ⚠
+        </div>
+
+        <!-- Flight Control Panel - MID RIGHT -->
+        <div id="control-panel">
+            <div class="panel-title" style="color: #0088ff; margin-bottom: 15px;">Flight Control</div>
+
+            <div class="control-group">
+                <label class="control-label">Select Flight</label>
+                <select id="flight-selector">
+                    <option value="AA-1842">AA-1842 (Normal)</option>
+                    <option value="UA-9271">UA-9271 (High Risk)</option>
+                    <option value="DL-5634">DL-5634 (Clear)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <button id="anomaly-toggle" class="danger">⚠ ENABLE ANOMALY MODE</button>
+            </div>
+
+            <div class="control-group">
+                <button id="camera-toggle">📷 Change Camera View</button>
+            </div>
+
+            <div class="control-group">
+                <button id="pause-toggle">⏸ Pause</button>
+            </div>
+
+            <div class="control-group">
+                <button id="reset-button">🔄 Reset Simulation</button>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Simulation Speed</label>
+                <div class="slider-container">
+                    <input type="range" id="speed-slider" min="0.5" max="4" step="0.1" value="1.5">
+                    <span class="slider-value" id="speed-value">1.5×</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sensor Failure Panel - BELOW CONTROL PANEL -->
+        <div id="sensor-failure-panel">
+            <div class="sensor-failure-title">⚠ SENSORS FAILED</div>
+            <div class="failed-sensor">❌ RALT - Radio Altimeter</div>
+            <div class="failed-sensor">❌ CAS - Calibrated Airspeed</div>
+            <div class="failed-sensor">❌ PITCH - Attitude Sensor</div>
+            <div class="failed-sensor">❌ ROLL - Gyroscope</div>
+        </div>
+
+        <!-- Telemetry Panel - BOTTOM RIGHT -->
+        <div id="telemetry-panel">
+            <div class="panel-title">Telemetry</div>
+            <div class="telemetry-item">
+                <span>Pitch:</span>
+                <span id="pitch">0.0°</span>
+            </div>
+            <div class="telemetry-item">
+                <span>Roll:</span>
+                <span id="roll">0.0°</span>
+            </div>
+            <div class="telemetry-item">
+                <span>FPS:</span>
+                <span id="fps">60</span>
+            </div>
+            <div class="telemetry-item">
+                <span>Progress:</span>
+                <span id="progress">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Center Warning -->
+    <div id="center-warning">
+        ANOMALY DETECTED
+    </div>
+
+    <!-- Free Camera Instructions -->
+    <div id="camera-instructions">
+        🖱️ FREE CAMERA: Left Click + Drag: Rotate | Right Click + Drag: Pan | Scroll: Zoom
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ==========================================
+        // GLOBAL VARIABLES & CONFIGURATION
+        // ==========================================
+
+        let scene, camera, renderer, aircraft, runway;
+        let particles = [];
+        let animationId;
+
+        // Simulation state
+        let simSpeed = 1.5;
+        let isPaused = false;
+        let anomalyMode = false;
+        let crashed = false;
+        let cameraMode = 0; // 0: chase, 1: top-down, 2: side, 3: front, 4: free
+        let freeCameraActive = false;
+
+        // Flight data arrays (28 points)
+        const altitudeData = [
+            10000, 9500, 9000, 8500, 8000, 7500, 7000, 6500, 6000, 5500,
+            5000, 4500, 4000, 3500, 3000, 2500, 2000, 1500, 1200, 1000,
+            800, 600, 400, 300, 200, 100, 50, 0
+        ];
+
+        const speedData = [
+            250, 245, 240, 235, 230, 225, 220, 215, 210, 205,
+            200, 195, 190, 185, 180, 175, 170, 165, 160, 155,
+            150, 145, 140, 135, 130, 125, 120, 0
+        ];
+
+        // Flight state
+        let flightProgress = 0; // 0 to 27
+        let currentAltitude = altitudeData[0];
+        let currentSpeed = speedData[0];
+        let confidence = 98.5;
+
+        // Aircraft position and orientation
+        let aircraftPosition = { x: 0, y: 1000, z: -4000 };
+        let aircraftRotation = { pitch: 0, roll: 0, yaw: 0 };
+
+        // Anomaly state
+        let turbulenceTime = 0;
+        let crashSequence = false;
+        let crashTime = 0;
+        let anomalyStartTime = 0;
+        let anomalyDelaySeconds = 3; // Delay before turbulence starts
+        let explosionParticles = [];
+        let hasExploded = false;
+        let fireParticles = [];
+        let smokeParticles = [];
+        let scatteredParts = [];
+        let animatedEffects = [];
+        let isDamaged = false;
+
+        // Free camera controls
+        let isDragging = false;
+        let isPanning = false;
+        let previousMouseX = 0;
+        let previousMouseY = 0;
+        let freeCameraRotation = { theta: 0, phi: Math.PI / 4 };
+        let freeCameraDistance = 500;
+        let freeCameraTarget = new THREE.Vector3(0, 100, 0);
+        let freeCameraPosition = new THREE.Vector3();
+
+        // Camera target
+        let targetCameraPos = new THREE.Vector3();
+        let targetCameraLookAt = new THREE.Vector3();
+
+        // FPS counter
+        let lastTime = performance.now();
+        let frames = 0;
+        let fps = 60;
+
+        // ==========================================
+        // SCENE SETUP
+        // ==========================================
+
+        function initScene() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.Fog(0x87CEEB, 1000, 8000);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                10000
+            );
+            camera.position.set(0, 200, -600);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Lights
+            const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x545454, 0.6);
+            scene.add(hemisphereLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            directionalLight.position.set(1000, 2000, 500);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 4096;
+            directionalLight.shadow.mapSize.height = 4096;
+            directionalLight.shadow.camera.left = -2000;
+            directionalLight.shadow.camera.right = 2000;
+            directionalLight.shadow.camera.top = 2000;
+            directionalLight.shadow.camera.bottom = -2000;
+            directionalLight.shadow.camera.far = 5000;
+            scene.add(directionalLight);
+
+            // Runway
+            createRunway();
+
+            // Sky dome
+            createSkyDome();
+
+            // Particles
+            createParticles();
+
+            // Aircraft
+            aircraft = createAircraft();
+            scene.add(aircraft);
+        }
+
+        // ==========================================
+        // RUNWAY CREATION
+        // ==========================================
+
+        function createRunway() {
+            const runwayGroup = new THREE.Group();
+
+            // Main ground plane
+            const groundGeometry = new THREE.PlaneGeometry(8000, 8000);
+            const groundMaterial = new THREE.MeshStandardMaterial({
+                color: 0x2d5016,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            runwayGroup.add(ground);
+
+            // Runway surface
+            const runwayGeometry = new THREE.PlaneGeometry(100, 3000);
+            const runwayMaterial = new THREE.MeshStandardMaterial({
+                color: 0x333333,
+                roughness: 0.7,
+                metalness: 0.1
+            });
+            const runwaySurface = new THREE.Mesh(runwayGeometry, runwayMaterial);
+            runwaySurface.rotation.x = -Math.PI / 2;
+            runwaySurface.position.y = 0.5;
+            runwaySurface.receiveShadow = true;
+            runwayGroup.add(runwaySurface);
+
+            // Centerline markings
+            for (let i = -1400; i < 1400; i += 100) {
+                const lineGeometry = new THREE.PlaneGeometry(2, 40);
+                const lineMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xffffff,
+                    emissive: 0xffffff,
+                    emissiveIntensity: 0.3
+                });
+                const line = new THREE.Mesh(lineGeometry, lineMaterial);
+                line.rotation.x = -Math.PI / 2;
+                line.position.set(0, 1, i);
+                runwayGroup.add(line);
+            }
+
+            // Edge markings
+            for (let side of [-50, 50]) {
+                for (let i = -1400; i < 1400; i += 80) {
+                    const edgeGeometry = new THREE.PlaneGeometry(3, 30);
+                    const edgeMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xffffff,
+                        emissive: 0xffffff,
+                        emissiveIntensity: 0.2
+                    });
+                    const edge = new THREE.Mesh(edgeGeometry, edgeMaterial);
+                    edge.rotation.x = -Math.PI / 2;
+                    edge.position.set(side, 1, i);
+                    runwayGroup.add(edge);
+                }
+            }
+
+            // Touchdown zone markings
+            for (let z of [-1200, -1100, -1000]) {
+                for (let x of [-20, 20]) {
+                    const tdGeometry = new THREE.PlaneGeometry(8, 50);
+                    const tdMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xffffff,
+                        emissive: 0xffffff,
+                        emissiveIntensity: 0.4
+                    });
+                    const td = new THREE.Mesh(tdGeometry, tdMaterial);
+                    td.rotation.x = -Math.PI / 2;
+                    td.position.set(x, 1.5, z);
+                    runwayGroup.add(td);
+                }
+            }
+
+            scene.add(runwayGroup);
+            runway = runwayGroup;
+        }
+
+        // ==========================================
+        // SKY DOME
+        // ==========================================
+
+        function createSkyDome() {
+            const skyGeometry = new THREE.SphereGeometry(7000, 32, 32);
+            const skyMaterial = new THREE.MeshBasicMaterial({
+                color: 0x87CEEB,
+                side: THREE.BackSide,
+                fog: false
+            });
+            const skyDome = new THREE.Mesh(skyGeometry, skyMaterial);
+            scene.add(skyDome);
+
+            // Add some cloud-like particles
+            for (let i = 0; i < 50; i++) {
+                const cloudGeometry = new THREE.SphereGeometry(50, 8, 8);
+                const cloudMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.4
+                });
+                const cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
+                cloud.position.set(
+                    (Math.random() - 0.5) * 6000,
+                    Math.random() * 1000 + 500,
+                    (Math.random() - 0.5) * 6000
+                );
+                cloud.scale.set(
+                    Math.random() * 3 + 1,
+                    Math.random() * 0.5 + 0.5,
+                    Math.random() * 3 + 1
+                );
+                scene.add(cloud);
+            }
+        }
+
+        // ==========================================
+        // PARTICLES
+        // ==========================================
+
+        function createParticles() {
+            const particleGeometry = new THREE.BufferGeometry();
+            const particleCount = 1000;
+            const positions = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 4000;
+                positions[i + 1] = Math.random() * 500;
+                positions[i + 2] = (Math.random() - 0.5) * 4000;
+            }
+
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 2,
+                transparent: true,
+                opacity: 0.3
+            });
+
+            const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particleSystem);
+            particles.push(particleSystem);
+        }
+
+        // ==========================================
+        // AIRCRAFT BUILDER
+        // ==========================================
+
+        function createAircraft() {
+            const aircraftGroup = new THREE.Group();
+            const scale = 4; // 4× larger
+
+            // Fuselage (oriented along Z-axis for forward flight)
+            const fuselageGeometry = new THREE.CylinderGeometry(4 * scale, 4 * scale, 40 * scale, 32);
+            const fuselageMaterial = new THREE.MeshStandardMaterial({
+                color: 0xf0f0f0,
+                metalness: 0.7,
+                roughness: 0.3
+            });
+            const fuselage = new THREE.Mesh(fuselageGeometry, fuselageMaterial);
+            fuselage.rotation.x = Math.PI / 2; // Rotate to align with Z-axis
+            fuselage.castShadow = true;
+            fuselage.receiveShadow = true;
+            aircraftGroup.add(fuselage);
+
+            // Nose cone (pointing forward along Z-axis)
+            const noseGeometry = new THREE.ConeGeometry(4 * scale, 12 * scale, 32);
+            const noseMaterial = new THREE.MeshStandardMaterial({
+                color: 0x1a3a6b,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            const nose = new THREE.Mesh(noseGeometry, noseMaterial);
+            nose.rotation.x = Math.PI / 2; // Point forward
+            nose.position.z = 26 * scale; // Move to front
+            nose.castShadow = true;
+            aircraftGroup.add(nose);
+
+            // Wings (horizontal, left-right spread along X-axis)
+            const wingGeometry = new THREE.BoxGeometry(50 * scale, 2 * scale, 15 * scale);
+            const wingMaterial = new THREE.MeshStandardMaterial({
+                color: 0xf0f0f0,
+                metalness: 0.7,
+                roughness: 0.3
+            });
+
+            const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
+            leftWing.position.set(-25 * scale, -2 * scale, 0);
+            leftWing.castShadow = true;
+            aircraftGroup.add(leftWing);
+
+            const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
+            rightWing.position.set(25 * scale, -2 * scale, 0);
+            rightWing.castShadow = true;
+            aircraftGroup.add(rightWing);
+
+            // Winglets (vertical tips)
+            const wingletGeometry = new THREE.BoxGeometry(3 * scale, 6 * scale, 1 * scale);
+            const wingletMaterial = new THREE.MeshStandardMaterial({
+                color: 0x1a3a6b,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+
+            const leftWinglet = new THREE.Mesh(wingletGeometry, wingletMaterial);
+            leftWinglet.position.set(-50 * scale, 3 * scale, -2 * scale);
+            leftWinglet.castShadow = true;
+            aircraftGroup.add(leftWinglet);
+
+            const rightWinglet = new THREE.Mesh(wingletGeometry, wingletMaterial);
+            rightWinglet.position.set(50 * scale, 3 * scale, -2 * scale);
+            rightWinglet.castShadow = true;
+            aircraftGroup.add(rightWinglet);
+
+            // Engines (aligned with fuselage along Z-axis)
+            const engineGeometry = new THREE.CylinderGeometry(2.5 * scale, 2.5 * scale, 8 * scale, 16);
+            const engineMaterial = new THREE.MeshStandardMaterial({
+                color: 0x444444,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+
+            const leftEngine = new THREE.Mesh(engineGeometry, engineMaterial);
+            leftEngine.rotation.x = Math.PI / 2; // Align with Z-axis
+            leftEngine.position.set(-18 * scale, -4 * scale, -2 * scale);
+            leftEngine.castShadow = true;
+            aircraftGroup.add(leftEngine);
+
+            const rightEngine = new THREE.Mesh(engineGeometry, engineMaterial);
+            rightEngine.rotation.x = Math.PI / 2; // Align with Z-axis
+            rightEngine.position.set(18 * scale, -4 * scale, -2 * scale);
+            rightEngine.castShadow = true;
+            aircraftGroup.add(rightEngine);
+
+            // Tail fin (vertical stabilizer)
+            const tailFinGeometry = new THREE.BoxGeometry(1 * scale, 12 * scale, 12 * scale);
+            const tailFinMaterial = new THREE.MeshStandardMaterial({
+                color: 0x1a3a6b,
+                metalness: 0.7,
+                roughness: 0.3
+            });
+            const tailFin = new THREE.Mesh(tailFinGeometry, tailFinMaterial);
+            tailFin.position.set(0, 6 * scale, -18 * scale); // At tail, pointing up
+            tailFin.castShadow = true;
+            aircraftGroup.add(tailFin);
+
+            // Horizontal stabilizers
+            const stabilizerGeometry = new THREE.BoxGeometry(20 * scale, 1 * scale, 6 * scale);
+            const stabilizer = new THREE.Mesh(stabilizerGeometry, wingMaterial);
+            stabilizer.position.set(0, 0, -18 * scale); // At tail, horizontal
+            stabilizer.castShadow = true;
+            aircraftGroup.add(stabilizer);
+
+            // Cockpit windows
+            const windowGeometry = new THREE.PlaneGeometry(8 * scale, 2 * scale);
+            const windowMaterial = new THREE.MeshStandardMaterial({
+                color: 0x000000,
+                metalness: 0.9,
+                roughness: 0.1,
+                emissive: 0x004488,
+                emissiveIntensity: 0.3
+            });
+            const cockpitWindow = new THREE.Mesh(windowGeometry, windowMaterial);
+            cockpitWindow.position.set(0, 4.1 * scale, 12 * scale); // Front of aircraft
+            aircraftGroup.add(cockpitWindow);
+
+            // Landing gear
+            const gearMaterial = new THREE.MeshStandardMaterial({
+                color: 0x333333,
+                metalness: 0.6,
+                roughness: 0.4
+            });
+
+            // Front gear (nose gear)
+            const frontGearGeometry = new THREE.CylinderGeometry(0.5 * scale, 0.5 * scale, 6 * scale, 8);
+            const frontGear = new THREE.Mesh(frontGearGeometry, gearMaterial);
+            frontGear.position.set(0, -7 * scale, 12 * scale); // Front of aircraft
+            frontGear.castShadow = true;
+            aircraftGroup.add(frontGear);
+
+            const frontWheelGeometry = new THREE.CylinderGeometry(1.5 * scale, 1.5 * scale, 1 * scale, 16);
+            const wheelMaterial = new THREE.MeshStandardMaterial({
+                color: 0x222222,
+                metalness: 0.3,
+                roughness: 0.8
+            });
+            const frontWheel = new THREE.Mesh(frontWheelGeometry, wheelMaterial);
+            frontWheel.rotation.z = Math.PI / 2; // Rotate for proper wheel orientation
+            frontWheel.position.set(0, -10 * scale, 12 * scale);
+            frontWheel.castShadow = true;
+            aircraftGroup.add(frontWheel);
+
+            // Main gears (under wings)
+            for (let x of [-12, 12]) {
+                const mainGear = new THREE.Mesh(frontGearGeometry, gearMaterial);
+                mainGear.position.set(x * scale, -7 * scale, -4 * scale);
+                mainGear.castShadow = true;
+                aircraftGroup.add(mainGear);
+
+                const mainWheel = new THREE.Mesh(frontWheelGeometry, wheelMaterial);
+                mainWheel.rotation.z = Math.PI / 2; // Rotate for proper wheel orientation
+                mainWheel.position.set(x * scale, -10 * scale, -4 * scale);
+                mainWheel.castShadow = true;
+                aircraftGroup.add(mainWheel);
+            }
+
+            // Position aircraft
+            aircraftGroup.position.set(
+                aircraftPosition.x,
+                aircraftPosition.y,
+                aircraftPosition.z
+            );
+
+            // Apply base orientation for proper landing approach
+            aircraftGroup.rotation.x = 0; // No roll initially
+            aircraftGroup.rotation.y = 0; // Face forward along positive Z
+            aircraftGroup.rotation.z = 0; // Wings level
+
+            // Store original material properties for damage/repair system
+            aircraftGroup.children.forEach(part => {
+                if (part.material) {
+                    part.material.userData = {
+                        originalColor: part.material.color.clone(),
+                        originalRoughness: part.material.roughness,
+                        originalEmissive: part.material.emissive ? part.material.emissive.getHex() : 0x000000
+                    };
+                }
+            });
+
+            return aircraftGroup;
+        }
+
+        // ==========================================
+        // FLIGHT PHYSICS
+        // ==========================================
+
+        function updateFlightPhysics(deltaTime) {
+            if (isPaused || crashed) return;
+
+            const dt = deltaTime * simSpeed;
+
+            if (!crashSequence) {
+                // Normal flight progression
+                flightProgress += dt * 0.5; // Adjust speed of progression
+
+                if (flightProgress >= altitudeData.length - 1) {
+                    flightProgress = altitudeData.length - 1;
+                    // Landed
+                    currentAltitude = 0;
+                    currentSpeed = 0;
+                    aircraftPosition.y = 20;
+                    aircraftPosition.z = 0;
+                } else {
+                    // Interpolate altitude and speed
+                    const index = Math.floor(flightProgress);
+                    const fraction = flightProgress - index;
+
+                    currentAltitude = THREE.MathUtils.lerp(
+                        altitudeData[index],
+                        altitudeData[Math.min(index + 1, altitudeData.length - 1)],
+                        fraction
+                    );
+
+                    currentSpeed = THREE.MathUtils.lerp(
+                        speedData[index],
+                        speedData[Math.min(index + 1, speedData.length - 1)],
+                        fraction
+                    );
+
+                    // Update aircraft position - move toward runway (positive Z direction)
+                    aircraftPosition.y = Math.max(20, currentAltitude * 0.1); // Scale altitude with minimum ground clearance
+                    aircraftPosition.z += currentSpeed * dt * 0.5; // Move forward toward runway
+
+                    // Proper landing approach angle (3-degree glide slope)
+                    if (currentAltitude > 500) {
+                        aircraftRotation.pitch = -0.0524; // -3 degrees nose down in radians
+                    } else if (currentAltitude > 100) {
+                        aircraftRotation.pitch = -0.0349; // -2 degrees for final approach
+                    } else {
+                        // Level out for touchdown
+                        aircraftRotation.pitch = THREE.MathUtils.lerp(
+                            aircraftRotation.pitch,
+                            0,
+                            dt * 0.8
+                        );
+                    }
+                }
+
+                // Apply anomaly effects with delayed start
+                if (anomalyMode && !crashSequence) {
+                    if (anomalyStartTime === 0) {
+                        anomalyStartTime = performance.now() / 1000;
+                    }
+
+                    const timeSinceAnomalyStart = (performance.now() / 1000) - anomalyStartTime;
+
+                    if (timeSinceAnomalyStart > anomalyDelaySeconds) {
+                        turbulenceTime += dt;
+
+                        // Realistic 3D turbulence
+                        const turbulenceIntensity = Math.min(turbulenceTime * 0.5, 1.0);
+
+                        // Multi-axis turbulence with different frequencies
+                        const verticalTurbulence = Math.sin(turbulenceTime * 8) * Math.cos(turbulenceTime * 3) * 30;
+                        const horizontalTurbulenceX = Math.sin(turbulenceTime * 6) * Math.cos(turbulenceTime * 2) * 15;
+                        const horizontalTurbulenceY = Math.cos(turbulenceTime * 7) * Math.sin(turbulenceTime * 4) * 10;
+
+                        aircraftPosition.y += verticalTurbulence * dt * 0.1 * turbulenceIntensity;
+                        aircraftPosition.x += horizontalTurbulenceX * dt * 0.1 * turbulenceIntensity;
+                        aircraftPosition.z += horizontalTurbulenceY * dt * 0.05 * turbulenceIntensity;
+
+                        // Ensure aircraft doesn't go below ground during turbulence
+                        aircraftPosition.y = Math.max(15, aircraftPosition.y);
+
+                        // Complex pitch, roll, and yaw oscillations
+                        aircraftRotation.pitch += Math.sin(turbulenceTime * 5) * Math.cos(turbulenceTime * 2) * dt * 0.08 * turbulenceIntensity;
+                        aircraftRotation.roll = Math.sin(turbulenceTime * 6) * Math.cos(turbulenceTime * 1.5) * 0.4 * turbulenceIntensity;
+                        aircraftRotation.yaw += Math.cos(turbulenceTime * 4) * Math.sin(turbulenceTime * 2.5) * dt * 0.03 * turbulenceIntensity;
+
+                        // Decrease confidence gradually
+                        confidence = Math.max(5, confidence - dt * 8);
+
+                        // Trigger crash if altitude too low during severe turbulence
+                        if (currentAltitude < 400 && turbulenceTime > 5 && turbulenceIntensity > 0.7) {
+                            crashSequence = true;
+                            crashTime = 0;
+                        }
+                    }
+                }
+            } else {
+                // Crash sequence
+                crashTime += dt;
+
+                // Dramatic nose dive with spin
+                aircraftRotation.pitch -= dt * 0.8;
+                aircraftRotation.roll += dt * 1.2;
+                aircraftRotation.yaw += dt * 0.5;
+
+                // Fast descent with forward momentum
+                aircraftPosition.y -= dt * 400;
+                aircraftPosition.z += dt * 150;
+
+                // Ground impact
+                if (aircraftPosition.y <= 15) {
+                    aircraftPosition.y = 15;
+                    crashed = true;
+                    confidence = 0;
+
+                    // Create explosion effect during anomaly crash
+                    if (anomalyMode && !hasExploded) {
+                        createExplosion();
+                        hasExploded = true;
+                    }
+                }
+            }
+
+            // Update aircraft transform
+            aircraft.position.set(
+                aircraftPosition.x,
+                aircraftPosition.y,
+                aircraftPosition.z
+            );
+
+            aircraft.rotation.set(
+                aircraftRotation.pitch,
+                aircraftRotation.yaw,
+                aircraftRotation.roll
+            );
+        }
+
+        // ==========================================
+        // CAMERA SYSTEM
+        // ==========================================
+
+        function updateCamera() {
+            const aircraftPos = new THREE.Vector3(
+                aircraftPosition.x,
+                aircraftPosition.y,
+                aircraftPosition.z
+            );
+
+            if (freeCameraActive) {
+                // Free camera mode - user controlled
+                updateFreeCamera();
+                return;
+            }
+
+            if (cameraMode === 0) {
+                // Chase camera
+                targetCameraPos.set(
+                    aircraftPos.x - 150,
+                    aircraftPos.y + 80,
+                    aircraftPos.z - 250
+                );
+                targetCameraLookAt.copy(aircraftPos);
+            } else if (cameraMode === 1) {
+                // Top-down view
+                targetCameraPos.set(
+                    aircraftPos.x,
+                    aircraftPos.y + 600,
+                    aircraftPos.z - 100
+                );
+                targetCameraLookAt.copy(aircraftPos);
+            } else if (cameraMode === 2) {
+                // Side runway view
+                targetCameraPos.set(
+                    400,
+                    150,
+                    -500
+                );
+                targetCameraLookAt.set(0, 80, 0);
+            } else if (cameraMode === 3) {
+                // Front view (aircraft approaching)
+                targetCameraPos.set(
+                    aircraftPos.x,
+                    aircraftPos.y + 30,
+                    aircraftPos.z + 300
+                );
+                targetCameraLookAt.copy(aircraftPos);
+            }
+
+            // Smooth camera movement
+            camera.position.lerp(targetCameraPos, 0.06);
+
+            const lookAt = new THREE.Vector3();
+            lookAt.copy(camera.position).lerp(targetCameraLookAt, 1.1);
+            camera.lookAt(lookAt);
+        }
+
+        function updateFreeCamera() {
+            // Calculate spherical coordinates for free camera
+            const x = freeCameraDistance * Math.sin(freeCameraRotation.phi) * Math.cos(freeCameraRotation.theta);
+            const y = freeCameraDistance * Math.cos(freeCameraRotation.phi);
+            const z = freeCameraDistance * Math.sin(freeCameraRotation.phi) * Math.sin(freeCameraRotation.theta);
+
+            freeCameraPosition.set(
+                freeCameraTarget.x + x,
+                freeCameraTarget.y + y,
+                freeCameraTarget.z + z
+            );
+
+            camera.position.copy(freeCameraPosition);
+            camera.lookAt(freeCameraTarget);
+        }
+
+        function createExplosion() {
+            // Stage 1: Initial Impact Flash
+            createImpactFlash();
+
+            // Stage 2: Primary Explosion (delayed)
+            setTimeout(() => createPrimaryExplosion(), 100);
+
+            // Stage 3: Secondary explosions (staggered)
+            setTimeout(() => createSecondaryExplosions(), 300);
+
+            // Stage 4: Fuel fires (delayed)
+            setTimeout(() => createRealisticFire(), 200);
+
+            // Stage 5: Volumetric smoke
+            setTimeout(() => createVolumetricSmoke(), 400);
+
+            // Stage 6: Ground impact effects
+            createGroundImpact();
+
+            // Stage 7: Realistic aircraft destruction
+            setTimeout(() => destroyAircraft(), 150);
+
+            // Stage 8: Create realistic debris field
+            setTimeout(() => createRealisticDebris(), 250);
+        }
+
+        function createImpactFlash() {
+            // Bright white impact flash
+            const flashGeometry = new THREE.SphereGeometry(50, 16, 16);
+            const flashMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            const flash = new THREE.Mesh(flashGeometry, flashMaterial);
+            flash.position.set(aircraftPosition.x, aircraftPosition.y, aircraftPosition.z);
+
+            scene.add(flash);
+
+            // Flash fades quickly
+            const flashTween = {
+                scale: 1,
+                opacity: 0.9,
+                update: function (deltaTime) {
+                    this.scale += deltaTime * 8;
+                    this.opacity -= deltaTime * 6;
+                    flash.scale.setScalar(this.scale);
+                    flash.material.opacity = Math.max(0, this.opacity);
+
+                    if (this.opacity <= 0) {
+                        scene.remove(flash);
+                        return false;
+                    }
+                    return true;
+                }
+            };
+            animatedEffects.push(flashTween);
+        }
+
+        function createPrimaryExplosion() {
+            // Large fireball with realistic expansion
+            const explosionGroup = new THREE.Group();
+
+            // Main fireball core
+            for (let i = 0; i < 15; i++) {
+                const fireballGeometry = new THREE.SphereGeometry(8 + Math.random() * 4, 8, 8);
+                const fireballMaterial = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color().setHSL(0.05 + Math.random() * 0.08, 1, 0.7),
+                    transparent: true,
+                    opacity: 0.8
+                });
+
+                const fireball = new THREE.Mesh(fireballGeometry, fireballMaterial);
+                fireball.position.set(
+                    aircraftPosition.x + (Math.random() - 0.5) * 20,
+                    aircraftPosition.y + (Math.random() - 0.5) * 10,
+                    aircraftPosition.z + (Math.random() - 0.5) * 20
+                );
+
+                fireball.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 80,
+                    Math.random() * 60 + 20,
+                    (Math.random() - 0.5) * 80
+                );
+
+                fireball.life = 4.0;
+                fireball.maxLife = 4.0;
+                fireball.expansionRate = 2 + Math.random() * 2;
+                explosionGroup.add(fireball);
+            }
+
+            // Hot sparks and embers
+            for (let i = 0; i < 50; i++) {
+                const sparkGeometry = new THREE.SphereGeometry(0.5, 4, 4);
+                const sparkMaterial = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color().setHSL(0.08 + Math.random() * 0.05, 1, 0.9),
+                    transparent: true,
+                    opacity: 1.0
+                });
+
+                const spark = new THREE.Mesh(sparkGeometry, sparkMaterial);
+                spark.position.set(
+                    aircraftPosition.x + (Math.random() - 0.5) * 15,
+                    aircraftPosition.y + Math.random() * 8,
+                    aircraftPosition.z + (Math.random() - 0.5) * 15
+                );
+
+                spark.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 200,
+                    Math.random() * 150 + 50,
+                    (Math.random() - 0.5) * 200
+                );
+
+                spark.life = 3.0 + Math.random() * 2;
+                explosionGroup.add(spark);
+            }
+
+            scene.add(explosionGroup);
+            explosionParticles.push(explosionGroup);
+        }
+
+        function createSecondaryExplosions() {
+            // Multiple smaller explosions around crash site
+            for (let e = 0; e < 3; e++) {
+                setTimeout(() => {
+                    const secondaryGroup = new THREE.Group();
+                    const offsetX = (Math.random() - 0.5) * 60;
+                    const offsetZ = (Math.random() - 0.5) * 60;
+
+                    for (let i = 0; i < 8; i++) {
+                        const fireballGeometry = new THREE.SphereGeometry(4 + Math.random() * 3, 6, 6);
+                        const fireballMaterial = new THREE.MeshBasicMaterial({
+                            color: new THREE.Color().setHSL(0.02 + Math.random() * 0.1, 1, 0.6),
+                            transparent: true,
+                            opacity: 0.7
+                        });
+
+                        const fireball = new THREE.Mesh(fireballGeometry, fireballMaterial);
+                        fireball.position.set(
+                            aircraftPosition.x + offsetX + (Math.random() - 0.5) * 15,
+                            20 + Math.random() * 10,
+                            aircraftPosition.z + offsetZ + (Math.random() - 0.5) * 15
+                        );
+
+                        fireball.velocity = new THREE.Vector3(
+                            (Math.random() - 0.5) * 60,
+                            Math.random() * 40 + 10,
+                            (Math.random() - 0.5) * 60
+                        );
+
+                        fireball.life = 2.5;
+                        fireball.maxLife = 2.5;
+                        fireball.expansionRate = 1.5;
+                        secondaryGroup.add(fireball);
+                    }
+
+                    scene.add(secondaryGroup);
+                    explosionParticles.push(secondaryGroup);
+                }, e * 800);
+            }
+        }
+
+        function createRealisticFire() {
+            // Ground fires with flame-like geometry
+            const fireGroup = new THREE.Group();
+
+            // Main fuel fire pools
+            for (let pool = 0; pool < 4; pool++) {
+                const poolOffsetX = (Math.random() - 0.5) * 80;
+                const poolOffsetZ = (Math.random() - 0.5) * 80;
+
+                // Create flame clusters for each fire pool
+                for (let i = 0; i < 30; i++) {
+                    // Create flame-like geometry instead of spheres
+                    const flameGeometry = new THREE.ConeGeometry(
+                        2 + Math.random() * 2,
+                        6 + Math.random() * 8,
+                        4
+                    );
+
+                    // Multi-colored realistic fire
+                    const flameHue = Math.random() * 0.15; // Red to yellow range
+                    const flameMaterial = new THREE.MeshBasicMaterial({
+                        color: new THREE.Color().setHSL(flameHue, 1, 0.7 - (flameHue * 2)),
+                        transparent: true,
+                        opacity: 0.7 + Math.random() * 0.2
+                    });
+
+                    const flame = new THREE.Mesh(flameGeometry, flameMaterial);
+                    flame.position.set(
+                        aircraftPosition.x + poolOffsetX + (Math.random() - 0.5) * 25,
+                        20 + Math.random() * 3,
+                        aircraftPosition.z + poolOffsetZ + (Math.random() - 0.5) * 25
+                    );
+
+                    // Upward flame movement with slight randomness
+                    flame.velocity = new THREE.Vector3(
+                        (Math.random() - 0.5) * 8,
+                        Math.random() * 25 + 15,
+                        (Math.random() - 0.5) * 8
+                    );
+
+                    flame.life = 12.0 + Math.random() * 8; // Long-lasting ground fires
+                    flame.maxLife = flame.life;
+                    flame.baseY = flame.position.y;
+                    flame.flickerSpeed = Math.random() * 0.5 + 0.5;
+                    flame.poolId = pool;
+                    fireGroup.add(flame);
+                }
+            }
+
+            // Floating embers and hot particles
+            for (let i = 0; i < 100; i++) {
+                const emberGeometry = new THREE.SphereGeometry(0.3 + Math.random() * 0.4, 4, 4);
+                const emberMaterial = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color().setHSL(0.05 + Math.random() * 0.08, 1, 0.8),
+                    transparent: true,
+                    opacity: 0.9
+                });
+
+                const ember = new THREE.Mesh(emberGeometry, emberMaterial);
+                ember.position.set(
+                    aircraftPosition.x + (Math.random() - 0.5) * 100,
+                    20 + Math.random() * 15,
+                    aircraftPosition.z + (Math.random() - 0.5) * 100
+                );
+
+                ember.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 20,
+                    Math.random() * 40 + 20,
+                    (Math.random() - 0.5) * 20
+                );
+
+                ember.life = 8.0 + Math.random() * 5;
+                ember.isEmber = true;
+                fireGroup.add(ember);
+            }
+
+            scene.add(fireGroup);
+            fireParticles.push(fireGroup);
+        }
+
+        function createVolumetricSmoke() {
+            const smokeGroup = new THREE.Group();
+
+            // Dense black smoke plumes - multiple sources
+            for (let source = 0; source < 5; source++) {
+                const sourceOffsetX = (Math.random() - 0.5) * 60;
+                const sourceOffsetZ = (Math.random() - 0.5) * 60;
+
+                // Create billowing smoke clouds for each source
+                for (let i = 0; i < 25; i++) {
+                    // Irregular cloud-like geometry
+                    const smokeGeometry = new THREE.SphereGeometry(
+                        4 + Math.random() * 6,
+                        8,
+                        8
+                    );
+
+                    // Varying smoke densities and colors
+                    const smokeDensity = Math.random();
+                    const smokeColor = smokeDensity > 0.7 ? 0.05 : (smokeDensity > 0.4 ? 0.15 : 0.25);
+
+                    const smokeMaterial = new THREE.MeshBasicMaterial({
+                        color: new THREE.Color().setHSL(0.05, 0.1, smokeColor),
+                        transparent: true,
+                        opacity: 0.4 + smokeDensity * 0.3
+                    });
+
+                    const smoke = new THREE.Mesh(smokeGeometry, smokeMaterial);
+                    smoke.position.set(
+                        aircraftPosition.x + sourceOffsetX + (Math.random() - 0.5) * 20,
+                        20 + Math.random() * 8,
+                        aircraftPosition.z + sourceOffsetZ + (Math.random() - 0.5) * 20
+                    );
+
+                    // Realistic smoke physics with wind drift
+                    smoke.velocity = new THREE.Vector3(
+                        (Math.random() - 0.3) * 30, // Slight wind drift
+                        Math.random() * 40 + 25,    // Rising
+                        (Math.random() - 0.5) * 15
+                    );
+
+                    smoke.life = 20.0 + Math.random() * 10; // Very long-lasting
+                    smoke.maxLife = smoke.life;
+                    smoke.expansionRate = 0.5 + Math.random() * 0.5;
+                    smoke.sourceId = source;
+                    smokeGroup.add(smoke);
+                }
+            }
+
+            // Steam and vapor from hot metal/fuel
+            for (let i = 0; i < 40; i++) {
+                const vaporGeometry = new THREE.SphereGeometry(1 + Math.random() * 2, 6, 6);
+                const vaporMaterial = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color().setHSL(0, 0, 0.7 + Math.random() * 0.2),
+                    transparent: true,
+                    opacity: 0.3
+                });
+
+                const vapor = new THREE.Mesh(vaporGeometry, vaporMaterial);
+                vapor.position.set(
+                    aircraftPosition.x + (Math.random() - 0.5) * 40,
+                    20 + Math.random() * 5,
+                    aircraftPosition.z + (Math.random() - 0.5) * 40
+                );
+
+                vapor.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 15,
+                    Math.random() * 30 + 15,
+                    (Math.random() - 0.5) * 15
+                );
+
+                vapor.life = 15.0;
+                vapor.isVapor = true;
+                smokeGroup.add(vapor);
+            }
+
+            scene.add(smokeGroup);
+            smokeParticles.push(smokeGroup);
+        }
+
+        function createGroundImpact() {
+            // Ground crater effect
+            const craterGeometry = new THREE.RingGeometry(0, 25, 16);
+            const craterMaterial = new THREE.MeshStandardMaterial({
+                color: 0x2a1a0a,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+
+            const crater = new THREE.Mesh(craterGeometry, craterMaterial);
+            crater.rotation.x = -Math.PI / 2;
+            crater.position.set(aircraftPosition.x, 19.5, aircraftPosition.z);
+            scene.add(crater);
+
+            // Dirt and debris thrown up
+            const dirtGroup = new THREE.Group();
+            for (let i = 0; i < 80; i++) {
+                const dirtGeometry = new THREE.SphereGeometry(0.5 + Math.random() * 1, 4, 4);
+                const dirtMaterial = new THREE.MeshStandardMaterial({
+                    color: new THREE.Color().setHSL(0.08, 0.4, 0.2 + Math.random() * 0.2),
+                    roughness: 1.0
+                });
+
+                const dirt = new THREE.Mesh(dirtGeometry, dirtMaterial);
+                dirt.position.set(
+                    aircraftPosition.x + (Math.random() - 0.5) * 20,
+                    aircraftPosition.y + Math.random() * 15,
+                    aircraftPosition.z + (Math.random() - 0.5) * 20
+                );
+
+                dirt.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 100,
+                    Math.random() * 80 + 30,
+                    (Math.random() - 0.5) * 100
+                );
+
+                dirt.life = 10.0;
+                dirt.castShadow = true;
+                dirtGroup.add(dirt);
+            }
+
+            scene.add(dirtGroup);
+            scatteredParts.push(dirtGroup);
+        }
+
+        function createRealisticDebris() {
+            const debrisGroup = new THREE.Group();
+
+            // Large aircraft sections with realistic damage
+            const majorPieces = [
+                {
+                    name: 'wing_left',
+                    geometry: new THREE.BoxGeometry(25, 2, 8),
+                    color: 0xe0e0e0,
+                    damage: 'torn'
+                },
+                {
+                    name: 'wing_right',
+                    geometry: new THREE.BoxGeometry(20, 2, 8),
+                    color: 0xe0e0e0,
+                    damage: 'twisted'
+                },
+                {
+                    name: 'engine_left',
+                    geometry: new THREE.CylinderGeometry(3, 3, 10, 8),
+                    color: 0x444444,
+                    damage: 'cracked'
+                },
+                {
+                    name: 'engine_right',
+                    geometry: new THREE.CylinderGeometry(3, 3, 8, 8),
+                    color: 0x444444,
+                    damage: 'shattered'
+                },
+                {
+                    name: 'fuselage_nose',
+                    geometry: new THREE.CylinderGeometry(2, 4, 15, 12),
+                    color: 0xf0f0f0,
+                    damage: 'crushed'
+                },
+                {
+                    name: 'fuselage_mid',
+                    geometry: new THREE.CylinderGeometry(4, 4, 20, 12),
+                    color: 0xf0f0f0,
+                    damage: 'split'
+                },
+                {
+                    name: 'tail_section',
+                    geometry: new THREE.BoxGeometry(8, 12, 3),
+                    color: 0x1a3a6b,
+                    damage: 'bent'
+                }
+            ];
+
+            majorPieces.forEach((piece, index) => {
+                const material = new THREE.MeshStandardMaterial({
+                    color: piece.color,
+                    roughness: 0.9,
+                    metalness: 0.7,
+                    map: createDamageTexture(piece.damage)
+                });
+
+                const debris = new THREE.Mesh(piece.geometry, material);
+
+                // Position major pieces in realistic spread pattern
+                const angle = (index / majorPieces.length) * Math.PI * 2;
+                const distance = 30 + Math.random() * 40;
+
+                debris.position.set(
+                    aircraftPosition.x + Math.cos(angle) * distance + (Math.random() - 0.5) * 20,
+                    aircraftPosition.y + Math.random() * 12,
+                    aircraftPosition.z + Math.sin(angle) * distance + (Math.random() - 0.5) * 20
+                );
+
+                // Realistic tumbling physics
+                debris.velocity = new THREE.Vector3(
+                    Math.cos(angle) * (60 + Math.random() * 80),
+                    Math.random() * 60 + 20,
+                    Math.sin(angle) * (60 + Math.random() * 80)
+                );
+
+                debris.angularVelocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 8,
+                    (Math.random() - 0.5) * 8,
+                    (Math.random() - 0.5) * 8
+                );
+
+                debris.life = 30.0; // Major pieces stay longer
+                debris.mass = 5.0; // Heavy pieces
+                debris.castShadow = true;
+                debris.receiveShadow = true;
+                debrisGroup.add(debris);
+            });
+
+            // Medium-sized debris (panels, pieces)
+            for (let i = 0; i < 30; i++) {
+                const shapes = [
+                    new THREE.BoxGeometry(4 + Math.random() * 6, 0.5, 2 + Math.random() * 4),
+                    new THREE.CylinderGeometry(1, 1, 3 + Math.random() * 3, 6),
+                    new THREE.ConeGeometry(1 + Math.random(), 3 + Math.random() * 2, 5)
+                ];
+
+                const geometry = shapes[Math.floor(Math.random() * shapes.length)];
+                const material = new THREE.MeshStandardMaterial({
+                    color: Math.random() > 0.5 ? 0xe0e0e0 : (Math.random() > 0.5 ? 0x1a3a6b : 0x444444),
+                    roughness: 0.8 + Math.random() * 0.2,
+                    metalness: Math.random() * 0.8
+                });
+
+                const debris = new THREE.Mesh(geometry, material);
+                debris.position.set(
+                    aircraftPosition.x + (Math.random() - 0.5) * 100,
+                    aircraftPosition.y + Math.random() * 10,
+                    aircraftPosition.z + (Math.random() - 0.5) * 100
+                );
+
+                debris.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 150,
+                    Math.random() * 70 + 15,
+                    (Math.random() - 0.5) * 150
+                );
+
+                debris.angularVelocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 12,
+                    (Math.random() - 0.5) * 12,
+                    (Math.random() - 0.5) * 12
+                );
+
+                debris.life = 25.0;
+                debris.mass = 1.0 + Math.random() * 2;
+                debris.castShadow = true;
+                debrisGroup.add(debris);
+            }
+
+            // Small fragments and shrapnel
+            for (let i = 0; i < 100; i++) {
+                const fragmentGeometry = new THREE.SphereGeometry(0.2 + Math.random() * 0.8, 4, 4);
+                const fragmentMaterial = new THREE.MeshStandardMaterial({
+                    color: new THREE.Color().setHSL(Math.random() * 0.1, 0.2, 0.3 + Math.random() * 0.4),
+                    roughness: 1.0,
+                    metalness: Math.random() * 0.5
+                });
+
+                const fragment = new THREE.Mesh(fragmentGeometry, fragmentMaterial);
+                fragment.position.set(
+                    aircraftPosition.x + (Math.random() - 0.5) * 25,
+                    aircraftPosition.y + Math.random() * 8,
+                    aircraftPosition.z + (Math.random() - 0.5) * 25
+                );
+
+                fragment.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 200,
+                    Math.random() * 100 + 30,
+                    (Math.random() - 0.5) * 200
+                );
+
+                fragment.life = 20.0;
+                fragment.mass = 0.1;
+                fragment.castShadow = true;
+                debrisGroup.add(fragment);
+            }
+
+            scene.add(debrisGroup);
+            scatteredParts.push(debrisGroup);
+        }
+
+        function createDamageTexture(damageType) {
+            // Create a simple procedural damage texture
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+
+            // Base color
+            ctx.fillStyle = '#cccccc';
+            ctx.fillRect(0, 0, 64, 64);
+
+            // Add damage based on type
+            ctx.fillStyle = '#333333';
+            for (let i = 0; i < 10; i++) {
+                const x = Math.random() * 64;
+                const y = Math.random() * 64;
+                const size = Math.random() * 8 + 2;
+                ctx.fillRect(x, y, size, size);
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
+        }
+
+        function destroyAircraft() {
+            // Gradually hide/damage the main aircraft
+            if (aircraft && aircraft.children) {
+                aircraft.children.forEach((part, index) => {
+                    setTimeout(() => {
+                        if (part.material) {
+                            // Make parts look severely damaged
+                            part.material.color.multiplyScalar(0.2);
+                            part.material.roughness = 1.0;
+                            part.material.emissive = new THREE.Color(0x661100);
+                            part.material.transparent = true;
+
+                            // Gradually fade out some parts
+                            if (Math.random() > 0.4) {
+                                const fadeTween = {
+                                    opacity: 1.0,
+                                    update: function (deltaTime) {
+                                        this.opacity -= deltaTime * 0.3;
+                                        part.material.opacity = Math.max(0.1, this.opacity);
+                                        return this.opacity > 0.1;
+                                    }
+                                };
+                                animatedEffects.push(fadeTween);
+                            }
+                        }
+                    }, index * 200);
+                });
+            }
+        }
+
+        function damageAircraft() {
+            isDamaged = true;
+            // Damage handling now moved to destroyAircraft() for more realistic sequence
+        }
+
+        function updateExplosions(deltaTime) {
+            // Update animated effects (like impact flash)
+            for (let i = animatedEffects.length - 1; i >= 0; i--) {
+                const effect = animatedEffects[i];
+                if (!effect.update(deltaTime)) {
+                    animatedEffects.splice(i, 1);
+                }
+            }
+
+            // Update explosion particles with realistic physics
+            for (let i = explosionParticles.length - 1; i >= 0; i--) {
+                const explosionGroup = explosionParticles[i];
+                let shouldRemove = true;
+
+                explosionGroup.children.forEach(particle => {
+                    if (particle.life > 0) {
+                        // Apply physics
+                        particle.position.add(particle.velocity.clone().multiplyScalar(deltaTime));
+                        particle.velocity.y -= 180 * deltaTime; // Gravity
+                        particle.velocity.multiplyScalar(0.98); // Air resistance
+
+                        // Fireball expansion
+                        if (particle.expansionRate) {
+                            particle.scale.x += particle.expansionRate * deltaTime;
+                            particle.scale.y += particle.expansionRate * deltaTime;
+                            particle.scale.z += particle.expansionRate * deltaTime;
+                        }
+
+                        particle.life -= deltaTime;
+
+                        // Realistic fade based on particle type
+                        if (particle.maxLife) {
+                            const lifeRatio = particle.life / particle.maxLife;
+                            particle.material.opacity = lifeRatio * 0.8;
+                        } else {
+                            particle.material.opacity = Math.max(0, particle.life / 3.0);
+                        }
+
+                        if (particle.life > 0) {
+                            shouldRemove = false;
+                        }
+                    }
+                });
+
+                if (shouldRemove) {
+                    scene.remove(explosionGroup);
+                    explosionParticles.splice(i, 1);
+                }
+            }
+
+            // Update realistic fire particles
+            fireParticles.forEach(fireGroup => {
+                fireGroup.children.forEach(fire => {
+                    if (fire.life > 0) {
+                        if (fire.isEmber) {
+                            // Ember physics
+                            fire.position.add(fire.velocity.clone().multiplyScalar(deltaTime));
+                            fire.velocity.y -= 80 * deltaTime; // Gravity on embers
+                            fire.velocity.multiplyScalar(0.95); // Air resistance
+
+                            fire.life -= deltaTime * 0.8;
+                            fire.material.opacity = Math.max(0, fire.life / 8.0);
+                        } else {
+                            // Flame physics
+                            fire.position.add(fire.velocity.clone().multiplyScalar(deltaTime * 0.3));
+
+                            // Flickering flames
+                            if (fire.flickerSpeed) {
+                                const flicker = Math.sin(Date.now() * fire.flickerSpeed * 0.01) * 0.3 + 0.7;
+                                fire.material.opacity = Math.max(0.3, flicker * 0.8);
+
+                                // Flame dancing
+                                fire.position.x += Math.sin(Date.now() * 0.005 + fire.poolId) * deltaTime * 2;
+                                fire.position.z += Math.cos(Date.now() * 0.007 + fire.poolId) * deltaTime * 2;
+                            }
+
+                            // Keep fire burning for long time
+                            fire.life -= deltaTime * 0.05;
+                            if (fire.life <= 0) {
+                                fire.life = fire.maxLife * 0.8; // Restart with less intensity
+                            }
+                        }
+                    }
+                });
+            });
+
+            // Update volumetric smoke with realistic behavior
+            for (let i = smokeParticles.length - 1; i >= 0; i--) {
+                const smokeGroup = smokeParticles[i];
+                let shouldRemove = true;
+
+                smokeGroup.children.forEach(smoke => {
+                    if (smoke.life > 0) {
+                        if (smoke.isVapor) {
+                            // Vapor/steam physics
+                            smoke.position.add(smoke.velocity.clone().multiplyScalar(deltaTime));
+                            smoke.velocity.y += 15 * deltaTime; // Light vapor rises
+                            smoke.scale.addScalar(deltaTime * 0.4); // Rapid expansion
+                        } else {
+                            // Dense smoke physics
+                            smoke.position.add(smoke.velocity.clone().multiplyScalar(deltaTime));
+                            smoke.velocity.y += 8 * deltaTime; // Heavy smoke rises slowly
+
+                            // Wind drift and turbulence
+                            smoke.velocity.x += (Math.random() - 0.5) * 10 * deltaTime;
+                            smoke.velocity.z += (Math.random() - 0.5) * 8 * deltaTime;
+
+                            // Billowing expansion
+                            if (smoke.expansionRate) {
+                                smoke.scale.x += smoke.expansionRate * deltaTime;
+                                smoke.scale.y += smoke.expansionRate * deltaTime * 0.5;
+                                smoke.scale.z += smoke.expansionRate * deltaTime;
+                            }
+                        }
+
+                        smoke.life -= deltaTime;
+                        const lifeRatio = smoke.life / smoke.maxLife;
+                        smoke.material.opacity = Math.max(0, lifeRatio * 0.6);
+
+                        if (smoke.life > 0) {
+                            shouldRemove = false;
+                        }
+                    }
+                });
+
+                if (shouldRemove) {
+                    scene.remove(smokeGroup);
+                    smokeParticles.splice(i, 1);
+                }
+            }
+
+            // Update realistic debris with advanced physics
+            scatteredParts.forEach(partsGroup => {
+                partsGroup.children.forEach(debris => {
+                    if (debris.life > 0) {
+                        // Apply physics based on mass
+                        const mass = debris.mass || 1.0;
+                        const gravityForce = 200 / mass;
+
+                        debris.position.add(debris.velocity.clone().multiplyScalar(deltaTime));
+                        debris.velocity.y -= gravityForce * deltaTime;
+
+                        // Air resistance based on size/mass
+                        const airResistance = 1 - (0.02 / mass);
+                        debris.velocity.multiplyScalar(airResistance);
+
+                        // Realistic tumbling
+                        if (debris.angularVelocity) {
+                            debris.rotation.x += debris.angularVelocity.x * deltaTime;
+                            debris.rotation.y += debris.angularVelocity.y * deltaTime;
+                            debris.rotation.z += debris.angularVelocity.z * deltaTime;
+                        }
+
+                        // Ground collision with realistic physics
+                        if (debris.position.y <= 20) {
+                            debris.position.y = 20;
+
+                            // Bounce based on mass and impact velocity
+                            const bounceReduction = Math.max(0.1, 0.5 / mass);
+                            debris.velocity.y = Math.abs(debris.velocity.y) * bounceReduction;
+                            debris.velocity.x *= 0.7; // Friction
+                            debris.velocity.z *= 0.7;
+
+                            // Reduce angular velocity on impact
+                            if (debris.angularVelocity) {
+                                debris.angularVelocity.multiplyScalar(0.6);
+                            }
+                        }
+
+                        // Slower decay for major pieces
+                        const decayRate = mass > 3 ? 0.03 : 0.08;
+                        debris.life -= deltaTime * decayRate;
+                    }
+                });
+            });
+        }
+
+        // ==========================================
+        // UI UPDATE
+        // ==========================================
+
+        function updateUI() {
+            // Data panel
+            document.getElementById('altitude').textContent = Math.round(currentAltitude) + ' ft';
+            document.getElementById('speed').textContent = Math.round(currentSpeed) + ' knots';
+
+            // Calculate distance to runway (runway is at z=0, aircraft starts at z=-4000)
+            const distanceMeters = Math.max(0, -aircraftPosition.z);
+            const distanceNm = distanceMeters / 1852; // Convert meters to nautical miles (1 nm = 1852 meters)
+            document.getElementById('distance').textContent = distanceNm.toFixed(1) + ' nm';
+
+            document.getElementById('confidence').textContent = confidence.toFixed(1) + '%';
+
+            const statusBadge = document.getElementById('status-badge');
+            const dataPanel = document.getElementById('data-panel');
+            const anomalyWarning = document.getElementById('anomaly-warning');
+            const centerWarning = document.getElementById('center-warning');
+            const sensorFailurePanel = document.getElementById('sensor-failure-panel');
+
+            if (crashed) {
+                // Aircraft has crashed - show crashed status
+                statusBadge.textContent = 'CRASHED';
+                statusBadge.className = 'status-badge status-crashed';
+                dataPanel.classList.add('anomaly');
+                centerWarning.style.display = 'block';
+                centerWarning.textContent = 'AIRCRAFT CRASHED';
+
+                // Hide other panels when crashed
+                anomalyWarning.style.display = 'none';
+                sensorFailurePanel.style.display = 'none';
+            } else if (anomalyMode) {
+                const timeSinceAnomalyStart = anomalyStartTime > 0 ? (performance.now() / 1000) - anomalyStartTime : 0;
+
+                statusBadge.textContent = 'ANOMALY';
+                statusBadge.className = 'status-badge status-anomaly';
+                dataPanel.classList.add('anomaly');
+
+                // Only show anomaly warnings after delay period
+                if (timeSinceAnomalyStart > anomalyDelaySeconds) {
+                    anomalyWarning.style.display = 'block';
+                    centerWarning.style.display = 'block';
+                    sensorFailurePanel.style.display = 'block';
+                } else {
+                    anomalyWarning.style.display = 'none';
+                    centerWarning.style.display = 'none';
+                    sensorFailurePanel.style.display = 'none';
+                }
+            } else {
+                statusBadge.textContent = 'NORMAL';
+                statusBadge.className = 'status-badge status-normal';
+                dataPanel.classList.remove('anomaly');
+                anomalyWarning.style.display = 'none';
+                centerWarning.style.display = 'none';
+                sensorFailurePanel.style.display = 'none';
+            }
+
+            // Telemetry panel
+            document.getElementById('pitch').textContent = (aircraftRotation.pitch * 180 / Math.PI).toFixed(1) + '°';
+            document.getElementById('roll').textContent = (aircraftRotation.roll * 180 / Math.PI).toFixed(1) + '°';
+            document.getElementById('fps').textContent = Math.round(fps);
+
+            const progress = Math.min(100, (flightProgress / (altitudeData.length - 1)) * 100);
+            document.getElementById('progress').textContent = progress.toFixed(0) + '%';
+        }
+
+        // ==========================================
+        // ANIMATION LOOP
+        // ==========================================
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+            lastTime = currentTime;
+
+            // FPS calculation
+            frames++;
+            if (frames % 60 === 0) {
+                fps = 1 / deltaTime;
+            }
+
+            // Update physics
+            updateFlightPhysics(deltaTime);
+
+            // Update explosion effects
+            updateExplosions(deltaTime);
+
+            // Update camera
+            updateCamera();
+
+            // Update UI
+            updateUI();
+
+            // Render
+            renderer.render(scene, camera);
+        }
+
+        // ==========================================
+        // EVENT HANDLERS
+        // ==========================================
+
+        function setupEventHandlers() {
+            // Window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Flight selector
+            document.getElementById('flight-selector').addEventListener('change', (e) => {
+                document.getElementById('flight-id').textContent = e.target.value;
+            });
+
+            // Anomaly toggle
+            document.getElementById('anomaly-toggle').addEventListener('click', () => {
+                anomalyMode = !anomalyMode;
+                const btn = document.getElementById('anomaly-toggle');
+                if (anomalyMode) {
+                    btn.textContent = '✓ ANOMALY MODE ACTIVE';
+                    btn.style.background = 'rgba(255, 0, 0, 0.6)';
+                    turbulenceTime = 0;
+                    anomalyStartTime = 0; // Reset anomaly timer
+                } else {
+                    btn.textContent = '⚠ ENABLE ANOMALY MODE';
+                    btn.style.background = '';
+                    confidence = 98.5;
+                    aircraftRotation.roll = 0;
+                    aircraftRotation.yaw = 0;
+                    anomalyStartTime = 0;
+                }
+            });
+
+            // Camera toggle
+            document.getElementById('camera-toggle').addEventListener('click', () => {
+                if (freeCameraActive) {
+                    freeCameraActive = false;
+                    document.getElementById('camera-instructions').style.display = 'none';
+                    cameraMode = 0; // Reset to chase camera
+                } else {
+                    cameraMode = (cameraMode + 1) % 4; // 0-3 for fixed cameras
+                    if (cameraMode === 0 && !freeCameraActive) {
+                        // After cycling through all fixed cameras, enable free camera
+                        freeCameraActive = true;
+                        document.getElementById('camera-instructions').style.display = 'block';
+                    }
+                }
+
+                const modes = ['Chase Camera', 'Top-Down View', 'Side Runway View', 'Front View', 'Free Camera'];
+                const btn = document.getElementById('camera-toggle');
+                if (freeCameraActive) {
+                    btn.textContent = '📷 Free Camera';
+                } else {
+                    btn.textContent = '📷 ' + modes[cameraMode];
+                }
+            });
+
+            // Pause toggle
+            document.getElementById('pause-toggle').addEventListener('click', () => {
+                isPaused = !isPaused;
+                const btn = document.getElementById('pause-toggle');
+                btn.textContent = isPaused ? '▶ Resume' : '⏸ Pause';
+            });
+
+            // Reset
+            document.getElementById('reset-button').addEventListener('click', resetSimulation);
+
+            // Speed slider
+            document.getElementById('speed-slider').addEventListener('input', (e) => {
+                simSpeed = parseFloat(e.target.value);
+                document.getElementById('speed-value').textContent = simSpeed.toFixed(1) + '×';
+            });
+
+            // Free camera mouse controls
+            renderer.domElement.addEventListener('mousedown', onMouseDown, false);
+            renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+            renderer.domElement.addEventListener('mouseup', onMouseUp, false);
+            renderer.domElement.addEventListener('wheel', onMouseWheel, false);
+            renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault(), false);
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    document.getElementById('pause-toggle').click();
+                } else if (e.code === 'Escape') {
+                    e.preventDefault();
+                    document.getElementById('camera-toggle').click();
+                } else if (e.code === 'KeyF' && freeCameraActive) {
+                    // Reset free camera to follow aircraft
+                    freeCameraTarget.set(aircraftPosition.x, aircraftPosition.y, aircraftPosition.z);
+                }
+            });
+        }
+
+        // Free camera mouse event handlers
+        function onMouseDown(event) {
+            if (!freeCameraActive) return;
+
+            event.preventDefault();
+
+            if (event.button === 0) { // Left mouse button
+                isDragging = true;
+            } else if (event.button === 2) { // Right mouse button
+                isPanning = true;
+            }
+
+            previousMouseX = event.clientX;
+            previousMouseY = event.clientY;
+        }
+
+        function onMouseMove(event) {
+            if (!freeCameraActive) return;
+
+            event.preventDefault();
+
+            const deltaX = event.clientX - previousMouseX;
+            const deltaY = event.clientY - previousMouseY;
+
+            if (isDragging) {
+                // Rotate camera around target
+                freeCameraRotation.theta -= deltaX * 0.01;
+                freeCameraRotation.phi += deltaY * 0.01;
+
+                // Clamp phi to prevent flipping
+                freeCameraRotation.phi = Math.max(0.1, Math.min(Math.PI - 0.1, freeCameraRotation.phi));
+            } else if (isPanning) {
+                // Pan camera target
+                const panSpeed = freeCameraDistance * 0.001;
+                const panVector = new THREE.Vector3();
+                panVector.setFromMatrixColumn(camera.matrix, 0); // Get camera right vector
+                panVector.multiplyScalar(-deltaX * panSpeed);
+
+                const panVectorY = new THREE.Vector3();
+                panVectorY.setFromMatrixColumn(camera.matrix, 1); // Get camera up vector
+                panVectorY.multiplyScalar(deltaY * panSpeed);
+
+                freeCameraTarget.add(panVector);
+                freeCameraTarget.add(panVectorY);
+            }
+
+            previousMouseX = event.clientX;
+            previousMouseY = event.clientY;
+        }
+
+        function onMouseUp(event) {
+            if (!freeCameraActive) return;
+
+            event.preventDefault();
+            isDragging = false;
+            isPanning = false;
+        }
+
+        function onMouseWheel(event) {
+            if (!freeCameraActive) return;
+
+            event.preventDefault();
+            const delta = event.deltaY;
+            freeCameraDistance += delta * 0.5;
+            freeCameraDistance = Math.max(50, Math.min(2000, freeCameraDistance)); // Clamp distance
+        }
+
+        // ==========================================
+        // RESET FUNCTION
+        // ==========================================
+
+        function resetSimulation() {
+            flightProgress = 0;
+            currentAltitude = altitudeData[0];
+            currentSpeed = speedData[0];
+            confidence = 98.5;
+
+            aircraftPosition = { x: 0, y: 1000, z: -4000 };
+            aircraftRotation = { pitch: 0, roll: 0, yaw: 0 };
+
+            anomalyMode = false;
+            turbulenceTime = 0;
+            crashSequence = false;
+            crashed = false;
+            crashTime = 0;
+            anomalyStartTime = 0;
+            hasExploded = false;
+
+            // Clear all animated effects first (including fade tweens)
+            animatedEffects = [];
+
+            // Clear all explosion effects
+            explosionParticles.forEach(explosion => {
+                scene.remove(explosion);
+            });
+            explosionParticles = [];
+
+            fireParticles.forEach(fire => {
+                scene.remove(fire);
+            });
+            fireParticles = [];
+
+            smokeParticles.forEach(smoke => {
+                scene.remove(smoke);
+            });
+            smokeParticles = [];
+
+            scatteredParts.forEach(parts => {
+                scene.remove(parts);
+            });
+            scatteredParts = [];
+
+            // Restore aircraft appearance BEFORE setting isDamaged to false
+            aircraft.visible = true;
+            if (isDamaged) {
+                // Reset aircraft materials to original state
+                aircraft.children.forEach(part => {
+                    if (part.material) {
+                        // Always restore materials, even if userData is missing
+                        if (part.material.userData && part.material.userData.originalColor) {
+                            part.material.color.copy(part.material.userData.originalColor);
+                            part.material.roughness = part.material.userData.originalRoughness || 0.3;
+                            part.material.emissive.setHex(part.material.userData.originalEmissive || 0x000000);
+                        } else {
+                            // Fallback restoration if userData is missing
+                            part.material.color.setHex(part.material.color.getHex() > 0x800000 ? 0xf0f0f0 : part.material.color.getHex());
+                            part.material.roughness = 0.3;
+                            part.material.emissive.setHex(0x000000);
+                        }
+
+                        // Always reset transparency and opacity
+                        part.material.transparent = false;
+                        part.material.opacity = 1.0;
+                        part.material.needsUpdate = true;
+                    }
+                });
+            }
+
+            // Now set isDamaged to false
+            isDamaged = false;
+
+            // Reset cameras
+            cameraMode = 0;
+            freeCameraActive = false;
+            freeCameraRotation = { theta: 0, phi: Math.PI / 4 };
+            freeCameraDistance = 500;
+            freeCameraTarget.set(0, 100, 0);
+            document.getElementById('camera-instructions').style.display = 'none';
+
+            isPaused = false;
+            document.getElementById('pause-toggle').textContent = '⏸ Pause';
+
+            const anomalyBtn = document.getElementById('anomaly-toggle');
+            anomalyBtn.textContent = '⚠ ENABLE ANOMALY MODE';
+            anomalyBtn.style.background = '';
+
+            const cameraBtn = document.getElementById('camera-toggle');
+            cameraBtn.textContent = '📷 Chase Camera';
+        }
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+
+        function init() {
+            initScene();
+            setupEventHandlers();
+            animate();
+        }
+
+        // Start the simulation
+        init();
+    </script>
+</body>
+
+</html>
