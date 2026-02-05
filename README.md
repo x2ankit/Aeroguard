@@ -25,6 +25,12 @@ Aeroguard implements a complete end-to-end machine learning pipeline that:
 
 The system focuses on critical flight phases (landing approach) where most aviation incidents occur, analyzing over 191 different flight parameters to identify unusual patterns.
 
+### System Architecture
+
+![Aeroguard Pipeline](ASSETS/Pipeline.png)
+
+*Complete end-to-end pipeline from raw flight data to anomaly detection and visualization*
+
 ## ✨ Features
 
 ### Core Capabilities
@@ -41,6 +47,25 @@ The system focuses on critical flight phases (landing approach) where most aviat
 - **Memory-Efficient Design**: Lazy loading for large-scale flight data processing
 - **Extensible Architecture**: Plugin-based system for custom transformations
 - **Comprehensive Reporting**: Detailed anomaly reports with clustering metrics
+
+### Dashboard Interface
+
+The interactive Streamlit dashboard provides comprehensive visualization and analysis capabilities:
+
+![Dashboard Overview](ASSETS/ui1.jpeg)
+*Main dashboard with flight anomaly statistics and KPIs*
+
+![Anomaly Clustering](ASSETS/ui2.jpeg) 
+*Advanced clustering visualization and anomaly distribution*
+
+![Sensor Analysis](ASSETS/ui3.jpeg)
+*Detailed sensor-level fault isolation and confidence scoring*
+
+![Flight Patterns](ASSETS/ui4.jpeg)
+*Flight pattern analysis and comparative visualization*
+
+![Results Summary](ASSETS/ui5.png)
+*Comprehensive results summary with actionable insights*
 
 ## 🛠️ Tech Stack
 
