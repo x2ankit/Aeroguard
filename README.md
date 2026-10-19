@@ -1,21 +1,51 @@
+<div align="center">
+
 # Aeroguard
 
-**Aeroguard** is an unsupervised machine-learning system for early detection of soft faults in aircraft flight telemetry.  It learns what normal landing behaviour looks like from historical flight recordings, automatically identifies anomalous flights, and provides per-sensor fault-isolation diagnostics through an interactive Streamlit dashboard.
+### Unsupervised Aviation Telemetry Anomaly Detection & Fault Isolation Platform
 
-Built on top of [scikit-learn](https://scikit-learn.org), the library wraps a configurable end-to-end pipeline (data loading → preprocessing → dimensionality reduction → clustering → reporting) in a clean Python API that follows scikit-learn conventions.
+<p>
+  <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.14-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white" alt="scikit-learn" />
+  <img src="https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Streamlit" />
+  <img src="https://img.shields.io/badge/Plotly-3F4F75?style=for-the-badge&logo=plotly&logoColor=white" alt="Plotly" />
+  <img src="https://img.shields.io/badge/NASA-DASHlink-0B3D91?style=for-the-badge&logo=nasa&logoColor=white" alt="NASA DASHlink" />
+</p>
 
----
+<p>
+  <img src="https://img.shields.io/badge/status-active-2ea44f?style=flat-square" alt="status" />
+  <img src="https://img.shields.io/badge/version-v0.1.0-3178c6?style=flat-square" alt="version" />
+  <img src="https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square" alt="license" />
+  <img src="https://img.shields.io/badge/architecture-unsupervised%20manifold-blueviolet?style=flat-square" alt="architecture" />
+  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs welcome" />
+</p>
 
-## Problem Statement
+**[Quickstart](#quickstart) &nbsp;·&nbsp; [Architecture](#architecture) &nbsp;·&nbsp; [How It Compares](#how-it-compares) &nbsp;·&nbsp; [Features](#features) &nbsp;·&nbsp; [Tech Stack](#technology-stack) &nbsp;·&nbsp; [Interactive Dashboard](#interactive-dashboard)**
 
-Traditional avionics safety monitoring relies on hard-coded limits (BITE — Built-In Test Equipment).  This approach misses *soft faults*: gradual sensor drift, intermittent communication errors, and subtle multi-parameter deviations that precede catastrophic failure but individually stay within acceptable bounds.
+</div>
 
-Aeroguard addresses this by:
-- Learning the distribution of *normal* landings from fleet data without requiring labelled examples.
-- Flagging flights that deviate significantly from the learned normal pattern.
-- Isolating which specific sensors contribute most to the anomaly, with calibrated confidence scores.
+<br />
 
----
+## Overview
+
+Most aviation safety monitoring relies on static threshold checks (BITE) that miss subtle multi-parameter degradation. **Aeroguard** is an unsupervised machine-learning platform for early detection and root-cause isolation of soft faults in aircraft flight telemetry. It learns normal landing dynamics directly from fleet history (NASA DASHlink) without manual labels, detects anomalous flights via adaptive manifold clustering, and attributes anomalies down to individual sensors with calibrated confidence scores.
+
+Built on top of [scikit-learn](https://scikit-learn.org), Aeroguard wraps a configurable end-to-end pipeline (data loading, preprocessing, dimensionality reduction, manifold clustering, and diagnostics) into an extensible API.
+
+<br />
+
+### How It Compares
+
+| Dimension | Traditional Avionics (BITE) | Aeroguard Platform |
+|---|---|---|
+| **Detection Principle** | Static univariate threshold limits | High-dimensional unsupervised manifold learning |
+| **Fault Coverage** | Hard limits, gross electrical failures | Subtle soft faults, sensor drift, multi-channel degradation |
+| **Parameter Interaction** | Isolated single-sensor analysis | Joint spatial-temporal covariance across 191 avionics sensors |
+| **Label Requirement** | Requires historical fault classification | 100% unsupervised — discovers outliers autonomously |
+| **Tuning Overhead** | Manual per-fleet epsilon calibration | Differential geometry auto-elbow resolution |
+| **Explainability** | Binary fault flags | Per-sensor calibrated confidence attribution & radar diagnostics |
+
+<br />
 
 ## Architecture
 
