@@ -165,59 +165,60 @@ This is implemented in [`flight_ad/cluster/_dbscan.py`](flight_ad/cluster/_dbsca
 
 ```
 Aeroguard/
-├── flight_ad/                    # Core Python package
-│   ├── cluster/
-│   │   └── _dbscan.py           # Adaptive DBSCAN implementation
-│   ├── datasets/
-│   │   ├── dashlink.py          # NASA DASHlink data loader (with auto-download)
-│   │   └── data.json            # Dataset URL and file manifest
-│   ├── learn/
-│   │   ├── stats_learner.py     # StatisticalLearner: sklearn pipeline wrapper
-│   │   ├── function_estimator.py# FunctionTransformer sklearn estimator
-│   │   └── _classifier.py      # ClassifierWrapper utility
-│   ├── math/
-│   │   └── geometry.py          # Curvature calculation (used by adaptive DBSCAN)
-│   ├── pipeline/
-│   │   └── ad.py                # AnomalyDetectionPipeline orchestrator
-│   ├── reconstruction/
-│   │   └── _autoencoder.py      # Autoencoder utilities (experimental)
-│   ├── report/
-│   │   ├── cluster.py           # Clustering metrics (silhouette, cluster info)
-│   │   └── diagnostics.py       # Per-sensor confidence dashboard builder
-│   ├── transformations/
-│   │   └── transforms.py        # Time-series reshape and resampling utilities
-│   ├── utils/
-│   │   ├── _sklearn_interface.py# retrieve_partial_pipeline helper
-│   │   └── data/
-│   │       └── interface.py     # DataBinder lazy-loading data manager
-│   ├── viz/
-│   │   └── chart.py             # Matplotlib flight and silhouette charts
-│   └── wrangling/
-│       ├── wrangler.py          # DataWrangler / FunctionPipeline
-│       └── operations.py        # Wrangling primitives (resample, impute, etc.)
-│
-├── examples/
-│   ├── sample_dbscan_pipeline.py# Minimal end-to-end example
-│   └── wrangling_functions.py   # Wrangling helpers used by demo scripts
-│
-├── scripts/
-│   ├── run_pipeline.py          # Run the pipeline and print results
-│   └── generate_reports.py      # Generate CSV reports + fault isolation dashboard
-│
-├── docs/
-│   └── joss/
-│       ├── paper.md             # Draft JOSS academic paper
-│       └── paper.bib            # Bibliography
-│
-├── ASSETS/                       # Dashboard screenshots and diagrams
-│   └── Pipeline.png
-│
-├── dashboard_app.py              # Streamlit dashboard application
-├── requirements.txt              # Pinned runtime dependencies
-├── setup.py                      # Package installation configuration
-├── pyproject.toml                # Build system configuration
-├── MANIFEST.in                   # Package data manifest
-└── LICENSE                       # MIT License
+├── flight_ad/                     # Core anomaly detection & telemetry package
+│   ├── cluster/                   # Custom clustering algorithms
+│   │   └── _dbscan.py             # Adaptive-epsilon DBSCAN (differential geometry elbow)
+│   ├── datasets/                  # NASA DASHlink data ingestion & manifests
+│   │   ├── dashlink.py            # Streamed parquet loader & dataset verification
+│   │   ├── data.json              # Upstream NASA DASHlink release manifest
+│   │   └── _interface.py          # Dataset interface utilities
+│   ├── learn/                     # scikit-learn estimators & pipeline wrappers
+│   │   ├── stats_learner.py       # StatisticalLearner pipeline orchestrator
+│   │   ├── function_estimator.py  # FunctionTransformer time-series estimator
+│   │   └── _classifier.py         # Classifier wrapper utility
+│   ├── math/                      # Geometric & mathematical utilities
+│   │   └── geometry.py            # Curvature calculation κ(x) for auto-epsilon
+│   ├── pipeline/                  # End-to-end detection orchestration
+│   │   └── ad.py                  # AnomalyDetectionPipeline fit & inference
+│   ├── reconstruction/            # Experimental neural representations
+│   │   └── _autoencoder.py        # Telemetry reconstruction autoencoder
+│   ├── report/                    # Evaluation & fault isolation diagnostics
+│   │   ├── cluster.py             # Silhouette scores & cluster distributions
+│   │   └── diagnostics.py         # Per-sensor fault isolation & confidence scoring
+│   ├── transformations/           # Time-series matrix reshaping
+│   │   └── transforms.py          # Interspersed matrix transformations
+│   ├── utils/                     # Data management & sklearn helpers
+│   │   ├── _sklearn_interface.py  # Pipeline stage inspection helpers
+│   │   └── data/interface.py      # DataBinder memory-efficient lazy loading
+│   ├── viz/                       # Plotting and visualization tools
+│   │   └── chart.py               # Flight trajectory & silhouette plots
+│   └── wrangling/                 # Composable signal preprocessing
+│       ├── wrangler.py            # DataWrangler function pipeline with LRU cache
+│       └── operations.py          # Resampling, NaN imputation, & WOW mapping
+├── assets/                        # Architecture diagrams & UI screenshots
+│   ├── Pipeline.png               # High-level pipeline diagram
+│   └── ui1.jpeg ... ui8.png       # Streamlit dashboard interface previews
+├── docs/                          # Project documentation & academic papers
+│   └── joss/                      # Journal of Open Source Software (JOSS) draft
+│       ├── paper.md               # Academic paper submission draft
+│       └── paper.bib              # Reference bibliography
+├── examples/                      # Runnable reference examples
+│   ├── sample_dbscan_pipeline.py  # Minimal standalone pipeline script
+│   └── wrangling_functions.py     # Common signal wrangling definitions
+├── outputs/                       # Generated analysis reports (git-ignored)
+│   ├── fault_isolation_dashboard.csv # Per-sensor root cause confidence scores
+│   ├── anomalies_only.csv         # Flagged anomalous flight subset
+│   └── anomaly_report.csv         # Full fleet clustering & silhouette metrics
+├── scripts/                       # Command-line execution scripts
+│   ├── run_pipeline.py            # End-to-end pipeline CLI runner
+│   └── generate_reports.py        # Automated report & dashboard CSV generator
+├── dashboard_app.py               # Streamlit interactive fault awareness dashboard
+├── index.html                     # Standalone WebGL / Three.js 3D flight visualizer
+├── requirements.txt               # Pinned runtime dependencies
+├── setup.py                       # Setuptools package configuration
+├── pyproject.toml                 # Modern PEP 517 build configuration
+├── MANIFEST.in                    # Package data inclusion manifest
+└── LICENSE                        # MIT License
 ```
 
 ---
