@@ -1,4 +1,4 @@
-﻿# Aeroguard
+# Aeroguard
 
 **Aeroguard** is an unsupervised machine-learning system for early detection of soft faults in aircraft flight telemetry.  It learns what normal landing behaviour looks like from historical flight recordings, automatically identifies anomalous flights, and provides per-sensor fault-isolation diagnostics through an interactive Streamlit dashboard.
 
@@ -19,38 +19,73 @@ Aeroguard addresses this by:
 
 ## Architecture
 
+```mermaid
+flowchart TB
+    subgraph S1["Telemetry Ingestion & Lazy Binding"]
+        direction LR
+        RawData[("NASA DASHlink Data Store<br/><sub>400 Flight Recordings · 191 Sensors · Parquet Format</sub>")]
+        Binder["DataBinder Interface<br/><sub>flight_ad.utils.data · Memory-Mapped Lazy Loading</sub>"]
+        RawData -->|On-demand stream| Binder
+    end
+
+    subgraph S2["Data Wrangling & Transformation Pipeline"]
+        direction LR
+        Segment["Phase Segmentation<br/><sub>Filter to Landing Phase (Altitude < 50 ft)</sub>"]
+        Resample["Trajectory Resampling<br/><sub>Uniform Interpolation to 282 Time Intervals</sub>"]
+        Encode["Categorical Encoding<br/><sub>Weight-On-Wheels (WOW) Binary Mapping</sub>"]
+        Select["Feature Selection<br/><sub>Isolate Core Avionics: RALT, CAS, ALT, WOW</sub>"]
+
+        Segment --> Resample --> Encode --> Select
+    end
+
+    subgraph S3["Unsupervised Learning Core (scikit-learn Wrapper)"]
+        direction LR
+        Transformer["FunctionTransformer<br/><sub>flight_ad.learn · Reshape Interspersed Matrices</sub>"]
+        Scaler["StandardScaler<br/><sub>Zero-Mean & Unit-Variance Normalization</sub>"]
+        PCA["Principal Component Analysis<br/><sub>Dimensionality Reduction: 191 Dims → 10 Components</sub>"]
+        DBSCAN["Adaptive DBSCAN<br/><sub>flight_ad.cluster · Differential Geometry Auto-Epsilon</sub>"]
+
+        Transformer --> Scaler --> PCA --> DBSCAN
+    end
+
+    subgraph S4["Prognostics & Fault Isolation Engine"]
+        direction LR
+        ClusteringEval["Cluster Evaluation<br/><sub>Silhouette Analysis · Inlier vs. Anomaly Classification</sub>"]
+        RobustBaseline["Robust Fleet Baseline<br/><sub>Median & Median Absolute Deviation (MAD) Across Fleet</sub>"]
+        Attribution["Per-Sensor Fault Isolation<br/><sub>Sensor Z-Score Attribution · Calibrated Confidence [0, 1)</sub>"]
+
+        ClusteringEval --> RobustBaseline --> Attribution
+    end
+
+    subgraph S5["Presentation & Analytics Layer"]
+        direction LR
+        Dashboard["Streamlit Interactive Dashboard<br/><sub>dashboard_app.py · Fleet Analytics · 3D Trajectory Visualizer</sub>"]
+        Outputs[("Structured Report Exports<br/><sub>outputs/fault_isolation_dashboard.csv · anomalies_only.csv</sub>")]
+    end
+
+    S1 -->|Telemetry DataFrames| S2
+    S2 -->|Cleaned Time-Series Matrices| S3
+    S3 -->|Cluster Labels & Coordinates| S4
+    Attribution -->|Diagnostic Vectors| Dashboard
+    Attribution -->|Automated CSV Export| Outputs
+
+    %% Styling Definitions
+    classDef storage fill:#1e293b,stroke:#475569,stroke-width:1.5px,color:#f8fafc;
+    classDef core fill:#0f172a,stroke:#3b82f6,stroke-width:1.5px,color:#f8fafc;
+    classDef wrangle fill:#0f172a,stroke:#06b6d4,stroke-width:1.5px,color:#f8fafc;
+    classDef ml fill:#0f172a,stroke:#8b5cf6,stroke-width:1.5px,color:#f8fafc;
+    classDef diag fill:#0f172a,stroke:#ec4899,stroke-width:1.5px,color:#f8fafc;
+    classDef ui fill:#0f172a,stroke:#10b981,stroke-width:1.5px,color:#f8fafc;
+
+    class RawData,Outputs storage;
+    class Binder core;
+    class Segment,Resample,Encode,Select wrangle;
+    class Transformer,Scaler,PCA,DBSCAN ml;
+    class ClusteringEval,RobustBaseline,Attribution diag;
+    class Dashboard ui;
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│  Raw flight recordings (NASA DASHlink, 400 flights, 191 sensors each)│
-└──────────────────────┬───────────────────────────────────────────────┘
-                       │
-           ┌───────────▼──────────┐
-           │  DataBinder          │  Lazy-load parquet files on demand
-           │  (utils/data)        │  Memory-efficient iterator pattern
-           └───────────┬──────────┘
-                       │
-           ┌───────────▼──────────┐
-           │  DataWrangler        │  Composable function pipeline:
-           │  (wrangling/)        │  • Filter to landing phase (alt < 50 ft)
-           │                      │  • Resample to 282 uniform intervals
-           │                      │  • Map categorical → numeric (WOW)
-           │                      │  • Select parameters (RALT, CAS, ALT, WOW)
-           └───────────┬──────────┘
-                       │
-           ┌───────────▼──────────┐
-           │  StatisticalLearner  │  sklearn Pipeline wrapper:
-           │  (learn/)            │  • FunctionTransformer (reshape time-series)
-           │                      │  • StandardScaler
-           │                      │  • PCA (191 dims → 10 components)
-           │                      │  • Adaptive DBSCAN (auto epsilon)
-           └───────────┬──────────┘
-                       │
-           ┌───────────▼──────────┐
-           │  Report & Dashboard  │  • Cluster metrics + silhouette scores
-           │  (report/, dashboard)│  • Per-sensor confidence scoring (MAD-based)
-           │                      │  • Interactive Streamlit visualisations
-           └──────────────────────┘
-```
+
+**End-to-end telemetry flow:** `DataBinder` lazy-loads raw NASA flight parquet files on demand to maintain a minimal memory footprint. The `DataWrangler` pipeline isolates touchdown trajectories, normalises sample rates, and extracts safety-critical features. In the modeling tier, high-dimensional flight matrices are scaled, compressed via PCA, and clustered with custom **Adaptive DBSCAN** (which calculates the optimal $\epsilon$ radius using differential geometry). Detected anomalies are routed to the prognostics engine, which computes robust fleet-level baseline deviations (MAD) to attribute root-cause soft faults to specific aircraft sensors and visualises them in real time via Streamlit.
 
 ### Key Technical Contribution: Adaptive DBSCAN
 
