@@ -1,0 +1,4 @@
+# GitHub Linguist language statistics overrides
+*.html linguist-vendored
+*.htm linguist-vendored
+*.json linguist-documentation

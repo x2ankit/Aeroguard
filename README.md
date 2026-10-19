@@ -13,7 +13,6 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/status-active-2ea44f?style=flat-square" alt="status" />
   <img src="https://img.shields.io/badge/version-v0.1.0-3178c6?style=flat-square" alt="version" />
   <img src="https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square" alt="license" />
   <img src="https://img.shields.io/badge/architecture-unsupervised%20manifold-blueviolet?style=flat-square" alt="architecture" />
@@ -213,7 +212,6 @@ Aeroguard/
 │   ├── run_pipeline.py            # End-to-end pipeline CLI runner
 │   └── generate_reports.py        # Automated report & dashboard CSV generator
 ├── dashboard_app.py               # Streamlit interactive fault awareness dashboard
-├── index.html                     # Standalone WebGL / Three.js 3D flight visualizer
 ├── requirements.txt               # Pinned runtime dependencies
 ├── setup.py                       # Setuptools package configuration
 ├── pyproject.toml                 # Modern PEP 517 build configuration
