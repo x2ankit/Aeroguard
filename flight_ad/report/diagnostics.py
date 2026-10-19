@@ -42,6 +42,8 @@ def build_confidence_dashboard(binder, wrangler, labels, flight_ids=None, anomal
     numeric_columns = [c for c in all_columns if c != 'flight_id']
 
     normal_indices = [i for i, lbl in enumerate(labels) if lbl != anomaly_label]
+    if not normal_indices:
+        normal_indices = list(range(len(labels)))
 
     baseline_stats: Dict[str, Tuple[float, float]] = {}
     for col in numeric_columns:

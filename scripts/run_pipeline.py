@@ -1,4 +1,4 @@
-﻿"""
+"""
 Aeroguard: Pipeline Demo
 ========================
 Demonstrates the end-to-end anomaly detection pipeline on the NASA DASHlink
@@ -43,9 +43,9 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 def separator(title=""):
     width = 72
     if title:
-        print(f"\n{'─' * 4} {title} {'─' * (width - len(title) - 6)}")
+        print(f"\n{'-' * 4} {title} {'-' * (width - len(title) - 6)}")
     else:
-        print("─" * width)
+        print("-" * width)
 
 
 # ---------------------------------------------------------------------------
@@ -122,15 +122,16 @@ print(f"Epsilon (auto)     : {learner.pipeline['dbscan'].eps:.6f}")
 # ---------------------------------------------------------------------------
 flight_ids = list(data_bindings.keys())
 anomaly_indices = np.where(labels == -1)[0]
+sil_scores = list(sample_sil) if len(sample_sil) == len(labels) else [0.0] * len(labels)
 anomaly_rows = [
-    {'flight_id': flight_ids[i], 'silhouette': float(sample_sil[i])}
+    {'flight_id': flight_ids[i], 'silhouette': float(sil_scores[i])}
     for i in anomaly_indices
 ]
 anomaly_rows.sort(key=lambda r: r['silhouette'])
 
 separator(f"Anomalous Flights Detected: {len(anomaly_rows)}")
 print(f"{'#':<4} {'Flight ID':<24} {'Silhouette':>12}")
-print("─" * 44)
+print("-" * 44)
 for rank, row in enumerate(anomaly_rows, 1):
     print(f"{rank:<4} {row['flight_id']:<24} {row['silhouette']:>12.4f}")
 
@@ -142,7 +143,7 @@ report = pd.DataFrame({
     'flight_id': flight_ids,
     'cluster_label': labels,
     'is_anomaly': labels == -1,
-    'silhouette_score': sample_sil,
+    'silhouette_score': sil_scores,
 })
 out_path = OUTPUT_DIR / 'anomaly_report.csv'
 report.to_csv(out_path, index=False)

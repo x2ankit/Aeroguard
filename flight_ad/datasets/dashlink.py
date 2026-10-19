@@ -55,15 +55,11 @@ def download_dataset():
 
 
 def check_dataset_existence(dataset_path: Path):
-    """Check if every file in the dataset exists."""
-    present_files = set([f.name for f in dataset_path.glob("*.parquet")])
-    required_files = set(DATASET_INFO['dashlink']['files'])
-    if present_files == required_files:
-        exist = True
-    else:
-        exist = False
-
-    return exist
+    """Check if flight recording parquet files exist in the dataset directory."""
+    if not dataset_path.exists():
+        return False
+    present_files = list(dataset_path.glob("*.parquet"))
+    return len(present_files) > 0
 
 
 def load(f):

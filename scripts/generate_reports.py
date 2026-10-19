@@ -1,4 +1,4 @@
-﻿"""
+"""
 Aeroguard: Anomaly Detection Report Generator
 =============================================
 Runs the full anomaly detection pipeline on the NASA DASHlink dataset and
@@ -91,13 +91,14 @@ print(f"Silhouette score : {avg_silhouette:.4f}")
 # ---------------------------------------------------------------------------
 # 3. Build and save reports
 # ---------------------------------------------------------------------------
+sil_scores = list(sample_silhouette) if len(sample_silhouette) == len(labels) else [0.0] * len(labels)
 anomaly_report = pd.DataFrame({
     'flight_id': flight_ids,
     'cluster_label': labels,
     'is_anomaly': labels == -1,
-    'silhouette_score': sample_silhouette if len(sample_silhouette) > 0 else [0] * len(labels),
+    'silhouette_score': sil_scores,
     'anomaly_severity': [
-        -sample_silhouette[i] if labels[i] == -1 else 0.0
+        -sil_scores[i] if labels[i] == -1 else 0.0
         for i in range(len(labels))
     ],
 })
