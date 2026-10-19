@@ -136,3 +136,18 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Generated output files (run scripts to regenerate)
+outputs/
+*.csv
+
+# macOS metadata
+.DS_Store
+**/.DS_Store
+
+# Downloaded dataset (large binary files)
+datasets/dashlink_flights/
+flight_ad/datasets/dashlink_flights/
+
+# Streamlit cache
+.streamlit/

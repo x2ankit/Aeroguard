@@ -6,7 +6,7 @@ from pathlib import Path
 from sklearn.decomposition import PCA
 import numpy as np
 
-DATA_DIR = Path(__file__).parent
+DATA_DIR = Path(__file__).parent / "outputs"
 DASHBOARD_FILE = DATA_DIR / "fault_isolation_dashboard.csv"
 ANOMALY_FILE = DATA_DIR / "anomalies_only.csv"
 REPORT_FILE = DATA_DIR / "anomaly_report.csv"
@@ -30,7 +30,7 @@ def load_data():
 dashboard_df, anomalies_df, report_df = load_data()
 
 if dashboard_df is None:
-    st.error("fault_isolation_dashboard.csv not found. Run anomaly_storage_guide.py first.")
+    st.error("outputs/fault_isolation_dashboard.csv not found. Run `python scripts/generate_reports.py` first.")
     st.stop()
 
 
