@@ -1,47 +1,45 @@
-import setuptools
-import os
+﻿import setuptools
+from pathlib import Path
 
-NAME = "flight-ad"
-VERSION = "0.0.2.dev2"
-DESCRIPTION = "flight-ad is a Python package for anomaly detection in the aviation domain built on top of scikit-learn."
-package_root = os.path.abspath(os.path.dirname(__file__))
-readme_filename = os.path.join(package_root, "README.md")
-
-with open(readme_filename, "r") as fh:
-    long_description = fh.read()
-
+NAME = "aeroguard"
+VERSION = "0.1.0"
+DESCRIPTION = (
+    "Aeroguard: unsupervised anomaly detection for aviation flight telemetry, "
+    "built on top of scikit-learn."
+)
+README = Path(__file__).parent / "README.md"
 
 setuptools.setup(
     name=NAME,
     version=VERSION,
-    author="Lucas Coelho e Silva",
+    author="Ankit",
     description=DESCRIPTION,
-    long_description=long_description,
+    long_description=README.read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
-    url="https://github.com/coelhosilva/flight-ad.git",
-    download_url="https://github.com/coelhosilva/flight-ad/archive/refs/tags/v0.0.1.tar.gz",
-    license='MIT',
+    url="https://github.com/x2ankit/Aeroguard",
+    license="MIT",
     packages=setuptools.find_packages(),
     install_requires=[
-        'numpy~=1.20.3',
-        'scikit-learn~=0.24.2',
-        'pandas~=1.2.4',
-        'matplotlib~=3.4.2',
-        'pyarrow~=4.0.1',
-        'tqdm~=4.61.1'
+        "numpy>=2.1,<2.2",
+        "pandas>=2.2,<2.3",
+        "pyarrow>=17,<19",
+        "scikit-learn>=1.5,<1.6",
+        "matplotlib>=3.9,<3.11",
+        "tqdm",
+        "streamlit>=1.35,<2",
+        "plotly>=5.22,<6",
     ],
-    keywordsList=['anomaly detection', 'anomaly', 'flight'],
+    keywords=["anomaly detection", "aviation", "flight data", "unsupervised learning"],
     classifiers=[
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Operating System :: OS Independent",
-        "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Intended Audience :: Science/Research",
     ],
-    python_requires='>=3.8',
+    python_requires=">=3.10",
     include_package_data=True,
 )
